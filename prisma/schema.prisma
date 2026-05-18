@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  REJECTED
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  username     String        @unique
+  passwordHash String
+  avatarUrl    String?
+  role         Role          @default(USER)
+  isActive     Boolean       @default(true)
+  orders       Order[]
+  downloads    DownloadLog[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Product {
+  id               String        @id @default(cuid())
+  slug             String        @unique
+  title            String
+  shortDescription String
+  description      String
+  category         String
+  stacks           String[]
+  priceCents       Int
+  coverImage       String
+  screenshots      String[]
+  zipPath          String
+  downloadLimit    Int           @default(5)
+  isPublished      Boolean       @default(true)
+  orders           Order[]
+  downloads        DownloadLog[]
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+}
+
+model Order {
+  id                String        @id @default(cuid())
+  userId            String
+  productId         String
+  status            OrderStatus   @default(PENDING)
+  paymentProofPath  String?
+  telegramMessageId String?
+  rejectionReason   String?
+  approvedAt        DateTime?
+  rejectedAt        DateTime?
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product           Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  downloads         DownloadLog[]
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([userId, status])
+  @@index([productId])
+}
+
+model DownloadLog {
+  id           String   @id @default(cuid())
+  userId       String
+  productId    String
+  orderId      String
+  ipAddress    String?
+  userAgent    String?
+  signedToken  String
+  downloadedAt DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([userId, productId])
+  @@index([orderId])
+}
